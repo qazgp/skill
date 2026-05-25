@@ -66,8 +66,11 @@ def latest_media(workdir, before):
     return sorted(files, key=lambda p: p.stat().st_mtime)[-1]
 
 
-def codec_suffix(codec):
-    return {'h264': '-H264', 'h265': '-H265', 'hevc': '-H265', 'av1': '-AV1'}.get(codec, '')
+def codec_suffix(codec, platform=None):
+    effective = codec
+    if codec == 'auto' and platform == 'bilibili':
+        effective = 'h264'
+    return {'h264': '-H264', 'h265': '-H265', 'hevc': '-H265', 'av1': '-AV1'}.get(effective, '')
 
 
 def copy_and_cleanup(output, args, workdir):
@@ -90,7 +93,7 @@ def copy_and_cleanup(output, args, workdir):
 
     safe_name = output.name
     safe_name = re.sub(r' \[[A-Za-z0-9_-]{10,14}(?:_p\d+)?\](?=\.[^.]+$)', '', safe_name)
-    suffix = codec_suffix(args.codec)
+    suffix = codec_suffix(args.codec, args.platform)
     if suffix and not safe_name.lower().removesuffix(output.suffix.lower()).lower().endswith(suffix.lower()):
         safe_name = safe_name[:-len(output.suffix)] + suffix + output.suffix
     dest = dest_dir / safe_name
@@ -121,14 +124,14 @@ def choose_format(platform, codec):
     if platform == 'youtube':
         return YOUTUBE_FORMAT
     if platform == 'bilibili':
-        return BILI_FORMAT
+        return H264_FORMAT
     return 'bv*+ba/best'
 
 
 def main():
     ap = argparse.ArgumentParser(description='Download YouTube/Bilibili at best quality and copy to mounted phone folder.')
     ap.add_argument('url')
-    ap.add_argument('--codec', choices=['auto', 'h264', 'h265', 'hevc', 'av1'], default='auto', help='Prefer the best stream for a specific video codec; auto keeps platform default')
+    ap.add_argument('--codec', choices=['auto', 'h264', 'h265', 'hevc', 'av1'], default='auto', help='Codec preference. For Bilibili, auto defaults to best H.264/AVC; for YouTube, auto keeps best quality with MP4 preference.')
     ap.add_argument('--cookies', default='', help='Netscape cookies.txt path; overrides platform default')
     ap.add_argument('--youtube-cookies', default=str(DEFAULT_YOUTUBE_COOKIES), help='Default YouTube cookies.txt path')
     ap.add_argument('--bili-cookies', default=str(DEFAULT_BILI_COOKIES), help='Default Bilibili cookies.txt path')
@@ -141,6 +144,7 @@ def main():
     ensure_tool('ffmpeg', 'ffmpeg')
 
     platform = detect_platform(args.url)
+    args.platform = platform
     workdir = BASE_WORKDIR / platform
     workdir.mkdir(parents=True, exist_ok=True)
     before = set(workdir.glob('*'))

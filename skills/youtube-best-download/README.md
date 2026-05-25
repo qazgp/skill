@@ -2,14 +2,14 @@
 
 ## English
 
-Download YouTube and Bilibili videos with `yt-dlp`, prioritizing the best available quality while preferring MP4/M4A when that does not reduce quality.
+Download YouTube and Bilibili videos with `yt-dlp`. YouTube uses best-quality-first with MP4/M4A preference. Bilibili defaults to the best available H.264/AVC stream for compatibility, unless another codec is requested.
 
 The skill can:
 
 - detect YouTube, `youtu.be`, Bilibili, and `b23.tv` links
 - use YouTube cookies for age-restricted videos
 - use Bilibili cookies for logged-in/high-quality formats such as 1080P, 4K, and 60fps
-- choose a specific codec when requested: H.264/AVC, H.265/HEVC, or AV1
+- choose a specific codec when requested: H.264/AVC, H.265/HEVC, or AV1; Bilibili defaults to H.264/AVC
 - merge streams with `ffmpeg`
 - copy the finished video to a mounted phone folder under `/var/minis/mounts/`
 - delete the Minis workspace copy by default after a successful copy
@@ -39,14 +39,14 @@ Useful options:
 
 ## 中文
 
-使用 `yt-dlp` 下载 YouTube 和 B 站视频，策略是：**最高画质优先，尽量 MP4/M4A，但不为了 MP4 牺牲画质**。
+使用 `yt-dlp` 下载 YouTube 和 B 站视频。YouTube 默认最高画质优先、尽量 MP4/M4A；B 站默认下载最高可用 H.264/AVC 版本，兼容性更好，除非用户指定其他编码。
 
 这个技能可以：
 
 - 自动识别 YouTube、`youtu.be`、哔哩哔哩、`b23.tv` 链接
 - 使用 YouTube Cookie 下载年龄限制视频
 - 使用 B 站 Cookie 获取登录后可用的 1080P、4K、60fps 等高画质
-- 按需指定编码：H.264/AVC、H.265/HEVC、AV1
+- 按需指定编码：H.264/AVC、H.265/HEVC、AV1；B 站默认 H.264/AVC
 - 用 `ffmpeg` 合并音视频流
 - 将成品复制到 `/var/minis/mounts/` 下的手机挂载目录
 - 成功复制后默认删除 Minis 虚拟机工作区副本

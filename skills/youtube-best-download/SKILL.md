@@ -1,7 +1,7 @@
 ---
 name: youtube-best-download
-description: Download YouTube and Bilibili videos from youtube.com/youtu.be/bilibili.com/b23.tv links using yt-dlp. Trigger when the user shares a YouTube or Bilibili URL or asks to download/save online videos to phone storage. Defaults to highest quality first, prefer MP4/M4A when available but do not sacrifice quality for MP4; supports explicit codec preferences such as H.264/H.265/AV1; uses cookies for restricted/high-quality videos if available; copies output to mounted phone folder under /var/minis/mounts and deletes the Minis workspace copy by default.
-version: 1.2.0
+description: Download YouTube and Bilibili videos from youtube.com/youtu.be/bilibili.com/b23.tv links using yt-dlp. Trigger when the user shares a YouTube or Bilibili URL or asks to download/save online videos to phone storage. YouTube defaults to highest quality first while preferring MP4/M4A; Bilibili defaults to the best available H.264/AVC stream for compatibility; supports explicit codec preferences such as H.264/H.265/AV1; uses cookies for restricted/high-quality videos if available; copies output to mounted phone folder under /var/minis/mounts and deletes the Minis workspace copy by default.
+version: 1.3.0
 ---
 # Video Best Download
 
@@ -9,14 +9,16 @@ Use this skill whenever the user shares a YouTube or Bilibili link and wants it 
 
 ## Policy / preference
 
-- Default strategy: **highest quality first, prefer MP4 but do not force MP4 at the cost of quality**.
+- Default strategy:
+  - **YouTube**: highest quality first, prefer MP4/M4A, but do not force MP4 at the cost of quality.
+  - **Bilibili**: default to the **best available H.264 / AVC** stream for compatibility unless the user specifies another codec.
 - YouTube default format selector:
   ```bash
   -f "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/best"
   ```
 - Bilibili default format selector:
   ```bash
-  -f "bv*+ba/best"
+  -f "bv*[vcodec^=avc1]+ba/best[vcodec^=avc1]/best"
   ```
 - Explicit codec modes are supported when the user asks for compatibility or a specific encoding:
   ```bash
@@ -63,7 +65,7 @@ python3 /var/minis/skills/youtube-best-download/scripts/youtube_best_download.py
 # Download only, do not copy to phone
 python3 /var/minis/skills/youtube-best-download/scripts/youtube_best_download.py URL --no-copy
 
-# Download the best H.264 version for compatibility
+# Download the best H.264 version for compatibility (Bilibili default)
 python3 /var/minis/skills/youtube-best-download/scripts/youtube_best_download.py URL --codec h264
 
 # Download the best H.265/HEVC or AV1 version
@@ -101,13 +103,13 @@ yt-dlp --cookies /path/to/youtube-cookies.txt \
   'YOUTUBE_URL'
 ```
 
-Bilibili default:
+Bilibili default H.264 compatibility mode:
 
 ```bash
 yt-dlp --cookies /path/to/bilibili-cookies.txt \
   --no-playlist \
   --socket-timeout 30 --retries 5 --fragment-retries 5 \
-  -f 'bv*+ba/best' \
+  -f 'bv*[vcodec^=avc1]+ba/best[vcodec^=avc1]/best' \
   --merge-output-format mp4 \
   -o '/var/minis/workspace/video_downloads/bilibili/%(title).120s [%(id)s].%(ext)s' \
   'BILIBILI_OR_B23_URL'

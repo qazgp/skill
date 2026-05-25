@@ -1,7 +1,7 @@
 ---
 name: youtube-best-download
-description: Download YouTube and Bilibili videos from youtube.com/youtu.be/bilibili.com/b23.tv links using yt-dlp. Trigger when the user shares a YouTube or Bilibili URL or asks to download/save online videos to phone storage. Defaults to highest quality first, prefer MP4/M4A when available but do not sacrifice quality for MP4; uses cookies for restricted/high-quality videos if available; copies output to mounted phone folder under /var/minis/mounts and deletes the Minis workspace copy by default.
-version: 1.1.0
+description: Download YouTube and Bilibili videos from youtube.com/youtu.be/bilibili.com/b23.tv links using yt-dlp. Trigger when the user shares a YouTube or Bilibili URL or asks to download/save online videos to phone storage. Defaults to highest quality first, prefer MP4/M4A when available but do not sacrifice quality for MP4; supports explicit codec preferences such as H.264/H.265/AV1; uses cookies for restricted/high-quality videos if available; copies output to mounted phone folder under /var/minis/mounts and deletes the Minis workspace copy by default.
+version: 1.2.0
 ---
 # Video Best Download
 
@@ -10,13 +10,23 @@ Use this skill whenever the user shares a YouTube or Bilibili link and wants it 
 ## Policy / preference
 
 - Default strategy: **highest quality first, prefer MP4 but do not force MP4 at the cost of quality**.
-- YouTube format selector:
+- YouTube default format selector:
   ```bash
   -f "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/best"
   ```
-- Bilibili format selector:
+- Bilibili default format selector:
   ```bash
   -f "bv*+ba/best"
+  ```
+- Explicit codec modes are supported when the user asks for compatibility or a specific encoding:
+  ```bash
+  --codec h264   # best available H.264 / AVC stream
+  --codec h265   # best available H.265 / HEVC stream
+  --codec av1    # best available AV1 stream
+  ```
+- H.264 format selector:
+  ```bash
+  -f "bv*[vcodec^=avc1]+ba/best[vcodec^=avc1]/best"
   ```
 - Add `--merge-output-format mp4` so compatible streams become MP4. If the true best streams require another container, accept `.webm`/`.mkv` rather than lowering quality.
 - Use cookies when present:
@@ -53,6 +63,13 @@ python3 /var/minis/skills/youtube-best-download/scripts/youtube_best_download.py
 # Download only, do not copy to phone
 python3 /var/minis/skills/youtube-best-download/scripts/youtube_best_download.py URL --no-copy
 
+# Download the best H.264 version for compatibility
+python3 /var/minis/skills/youtube-best-download/scripts/youtube_best_download.py URL --codec h264
+
+# Download the best H.265/HEVC or AV1 version
+python3 /var/minis/skills/youtube-best-download/scripts/youtube_best_download.py URL --codec h265
+python3 /var/minis/skills/youtube-best-download/scripts/youtube_best_download.py URL --codec av1
+
 # Specify a mounted folder name/path
 python3 /var/minis/skills/youtube-best-download/scripts/youtube_best_download.py URL --mount minis
 python3 /var/minis/skills/youtube-best-download/scripts/youtube_best_download.py URL --mount /var/minis/mounts/minis
@@ -72,7 +89,7 @@ Then rerun the script or manually copy from workspace to `/var/minis/mounts/<nam
 
 ## Manual Fallback
 
-YouTube:
+YouTube default:
 
 ```bash
 yt-dlp --cookies /path/to/youtube-cookies.txt \
@@ -84,7 +101,7 @@ yt-dlp --cookies /path/to/youtube-cookies.txt \
   'YOUTUBE_URL'
 ```
 
-Bilibili:
+Bilibili default:
 
 ```bash
 yt-dlp --cookies /path/to/bilibili-cookies.txt \
@@ -94,6 +111,18 @@ yt-dlp --cookies /path/to/bilibili-cookies.txt \
   --merge-output-format mp4 \
   -o '/var/minis/workspace/video_downloads/bilibili/%(title).120s [%(id)s].%(ext)s' \
   'BILIBILI_OR_B23_URL'
+```
+
+Bilibili/YouTube H.264 compatibility mode:
+
+```bash
+yt-dlp --cookies /path/to/cookies.txt \
+  --no-playlist \
+  --socket-timeout 30 --retries 5 --fragment-retries 5 \
+  -f 'bv*[vcodec^=avc1]+ba/best[vcodec^=avc1]/best' \
+  --merge-output-format mp4 \
+  -o '/var/minis/workspace/video_downloads/%(title).120s [%(id)s].%(ext)s' \
+  'VIDEO_URL'
 ```
 
 Then copy the result to `/var/minis/mounts/<mounted-folder>/` and remove the workspace copy unless the user wants both.

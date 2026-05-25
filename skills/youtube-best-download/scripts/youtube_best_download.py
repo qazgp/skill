@@ -13,6 +13,9 @@ DEFAULT_BILI_COOKIES = Path('/var/minis/attachments/uploads/shared-5a43b52b.txt'
 MOUNTS = Path('/var/minis/mounts')
 YOUTUBE_FORMAT = 'bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/best'
 BILI_FORMAT = 'bv*+ba/best'
+H264_FORMAT = 'bv*[vcodec^=avc1]+ba/best[vcodec^=avc1]/best'
+H265_FORMAT = 'bv*[vcodec^=hev1]+ba/best[vcodec^=hev1]/best'
+AV1_FORMAT = 'bv*[vcodec^=av01]+ba/best[vcodec^=av01]/best'
 MEDIA_EXTS = {'.mp4', '.mkv', '.webm', '.m4a', '.mp3'}
 
 
@@ -63,6 +66,10 @@ def latest_media(workdir, before):
     return sorted(files, key=lambda p: p.stat().st_mtime)[-1]
 
 
+def codec_suffix(codec):
+    return {'h264': '-H264', 'h265': '-H265', 'hevc': '-H265', 'av1': '-AV1'}.get(codec, '')
+
+
 def copy_and_cleanup(output, args, workdir):
     print(f'WORKSPACE_FILE={output}')
     print(f'SIZE={output.stat().st_size}')
@@ -83,6 +90,9 @@ def copy_and_cleanup(output, args, workdir):
 
     safe_name = output.name
     safe_name = re.sub(r' \[[A-Za-z0-9_-]{10,14}(?:_p\d+)?\](?=\.[^.]+$)', '', safe_name)
+    suffix = codec_suffix(args.codec)
+    if suffix and not safe_name.lower().removesuffix(output.suffix.lower()).lower().endswith(suffix.lower()):
+        safe_name = safe_name[:-len(output.suffix)] + suffix + output.suffix
     dest = dest_dir / safe_name
     shutil.copy2(output, dest)
     print(f'PHONE_FILE={dest}')
@@ -101,9 +111,24 @@ def copy_and_cleanup(output, args, workdir):
         print('WORKSPACE_DELETED=1')
 
 
+def choose_format(platform, codec):
+    if codec == 'h264':
+        return H264_FORMAT
+    if codec in {'h265', 'hevc'}:
+        return H265_FORMAT
+    if codec == 'av1':
+        return AV1_FORMAT
+    if platform == 'youtube':
+        return YOUTUBE_FORMAT
+    if platform == 'bilibili':
+        return BILI_FORMAT
+    return 'bv*+ba/best'
+
+
 def main():
     ap = argparse.ArgumentParser(description='Download YouTube/Bilibili at best quality and copy to mounted phone folder.')
     ap.add_argument('url')
+    ap.add_argument('--codec', choices=['auto', 'h264', 'h265', 'hevc', 'av1'], default='auto', help='Prefer the best stream for a specific video codec; auto keeps platform default')
     ap.add_argument('--cookies', default='', help='Netscape cookies.txt path; overrides platform default')
     ap.add_argument('--youtube-cookies', default=str(DEFAULT_YOUTUBE_COOKIES), help='Default YouTube cookies.txt path')
     ap.add_argument('--bili-cookies', default=str(DEFAULT_BILI_COOKIES), help='Default Bilibili cookies.txt path')
@@ -125,18 +150,16 @@ def main():
         if not shutil.which('node'):
             run(['apk', 'add', 'nodejs'])
         cmd += ['--js-runtimes', 'node', '--remote-components', 'ejs:github']
-        fmt = YOUTUBE_FORMAT
         cookie_path = Path(args.cookies or args.youtube_cookies)
     elif platform == 'bilibili':
-        fmt = BILI_FORMAT
         cookie_path = Path(args.cookies or args.bili_cookies)
     else:
-        fmt = 'bv*+ba/best'
         cookie_path = Path(args.cookies) if args.cookies else None
 
     if cookie_path and cookie_path.exists():
         cmd += ['--cookies', str(cookie_path)]
 
+    fmt = choose_format(platform, args.codec)
     cmd += [
         '--socket-timeout', '30',
         '--retries', '5',
